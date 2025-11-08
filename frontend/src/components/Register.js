@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 export default function Register() {
   const [username, setUsername] = useState("");
@@ -9,6 +9,16 @@ export default function Register() {
 
   async function handleCreate(e) {
     e.preventDefault();
+
+    if (!username || !password) {
+      setStatus("Please fill in all fields");
+      return;
+    }
+
+    if (password.length < 6) {
+      setStatus("Password must be at least 6 characters");
+      return;
+    }
 
     setStatus("Checking username...");
     try {
@@ -49,23 +59,36 @@ export default function Register() {
   }
 
   return (
-    <form onSubmit={handleCreate} className="card">
+    <div style={{ maxWidth: "400px", margin: "50px auto", padding: "20px", border: "1px solid #ccc", borderRadius: "8px" }}>
       <h3>Create account</h3>
-      <input
-        placeholder="username"
-        value={username}
-        onChange={e => setUsername(e.target.value)}
-        required
-      />
-      <input
-        placeholder="password"
-        type="password"
-        value={password}
-        onChange={e => setPassword(e.target.value)}
-        required
-      />
-      <button type="submit">Create</button>
-      <div className="status">{status}</div>
-    </form>
+      <form onSubmit={handleCreate}>
+        <div style={{ marginBottom: "15px" }}>
+          <input
+            placeholder="Username"
+            value={username}
+            onChange={e => setUsername(e.target.value)}
+            required
+            style={{ width: "100%", padding: "10px", marginBottom: "10px", border: "1px solid #ddd", borderRadius: "4px" }}
+          />
+          <input
+            placeholder="Password (minimum 6 characters)"
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            required
+            style={{ width: "100%", padding: "10px", border: "1px solid #ddd", borderRadius: "4px" }}
+          />
+        </div>
+        <button type="submit" style={{ width: "100%", padding: "10px", backgroundColor: "#28a745", color: "white", border: "none", borderRadius: "4px" }}>
+          Create Account
+        </button>
+        <div className="status" style={{ marginTop: "15px", color: status.includes("error") || status.includes("failed") || status.includes("already in use") ? "#dc3545" : "#28a745" }}>
+          {status}
+        </div>
+        <p style={{ textAlign: "center", marginTop: "15px" }}>
+          Already have an account? <Link to="/">Login here</Link>
+        </p>
+      </form>
+    </div>
   );
 }
