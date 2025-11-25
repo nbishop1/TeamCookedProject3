@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import socket from "../socket"; // import your shared socket connection
+import socket from "../socket";
 
 export default function SelectWord() {
   const navigate = useNavigate();
@@ -8,20 +8,14 @@ export default function SelectWord() {
   const [word, setWord] = useState("");
 
   useEffect(() => {
-    // Ask server if we are player 1 or player 2
     socket.emit("whoAmI");
 
-    socket.on("youAre", (data) => {
-      setIsPlayer1(data.player === 1);
-    });
-
-    socket.on("wordChosen", () => {
-      navigate("/game");
-    });
+    socket.on("youAre", (data) => setIsPlayer1(data.player === 1));
+    socket.on("startGame", () => navigate("/game"));
 
     return () => {
       socket.off("youAre");
-      socket.off("wordChosen");
+      socket.off("startGame");
     };
   }, [navigate]);
 
@@ -30,32 +24,17 @@ export default function SelectWord() {
     socket.emit("submitWord", word);
   };
 
-  if (!isPlayer1) {
-    return (
-      <div style={{ padding: "2rem" }}>
-        <h2>Waiting for Player 1 to choose a word...</h2>
-      </div>
-    );
-  }
+  if (!isPlayer1) return <h2>Waiting for Player 1 to choose a word...</h2>;
 
   return (
-    <div style={{ padding: "2rem" }}>
+    <div>
       <h1>Player 1: Choose a Word</h1>
-
       <input
-        type="text"
         value={word}
         onChange={(e) => setWord(e.target.value)}
-        style={{ padding: "0.5rem", width: "300px" }}
         placeholder="Enter secret word"
       />
-
-      <button
-        onClick={submitWord}
-        style={{ padding: "0.5rem 1rem", marginLeft: "1rem" }}
-      >
-        Submit Word
-      </button>
+      <button onClick={submitWord}>Submit Word</button>
     </div>
   );
 }
