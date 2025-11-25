@@ -43,6 +43,22 @@ app.get("/", (req, res) => {
     res.send("Hello, World");
 });
 
+//List of words for Hangman
+const testWord = [
+    "Hangman",
+    "Dog",
+    "Cat",
+    "Star wars",
+];
+
+// Get a word for Hangman
+app.get("/getWord", (req, res) => {
+    res.json({
+        phrase: testWord,
+        source: "database"
+    });
+});
+
 // ----- SOCKET.IO SETUP -----  Used Google and Chatgpt to help build this connection to socket.io
 const io = new Server(server, {
     cors: {

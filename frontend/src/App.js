@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { io } from "socket.io-client";
+import { Routes, Route, Link } from "react-router-dom";
+import Hangman from "./Hangman";
 
 // Connect to the Socket.IO server
 const socket = io("http://localhost:3001", {
@@ -87,42 +89,64 @@ function App() {
   }
 
   return (
-    <div style={{ padding: "2rem", fontFamily: "Arial" }}>
-      <h1>Realtime Chat</h1>
-
-      <div style={{ marginBottom: "1rem" }}>
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Type a message..."
-          style={{ padding: "0.5rem", width: "300px" }}
-        />
-        <button
-          onClick={sendMessage}
-          style={{ padding: "0.5rem 1rem", marginLeft: "0.5rem" }}
-        >
-          Send
-        </button>
-      </div>
-
-      <ul style={{ listStyle: "none", padding: 0 }}>
-        {messages.map((msg, idx) => (
-          <li
-            key={idx}
-            style={{
-              background: "#f0f0f0",
-              marginBottom: "0.5rem",
-              padding: "0.5rem",
-              borderRadius: "5px",
-            }}
-          >
-            {msg}
-          </li>
-        ))}
-      </ul>
+  <>
+    {/* Navigation */}
+    <div style={{ marginBottom: "2rem", padding: "1rem" }}>
+      <Link to="/">Chat</Link> |{" "}
+      <Link to="/hangman" style={{ marginLeft: "10px" }}>
+        Play Hangman
+      </Link>
     </div>
-  );
+
+    {/* Routes */}
+    <Routes>
+      {/* Chat Page */}
+      <Route
+        path="/"
+        element={
+          <div style={{ padding: "2rem", fontFamily: "Arial" }}>
+            <h1>Realtime Chat</h1>
+
+            <div style={{ marginBottom: "1rem" }}>
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Type a message..."
+                style={{ padding: "0.5rem", width: "300px" }}
+              />
+              <button
+                onClick={sendMessage}
+                style={{ padding: "0.5rem 1rem", marginLeft: "0.5rem" }}
+              >
+                Send
+              </button>
+            </div>
+
+            <ul style={{ listStyle: "none", padding: 0 }}>
+              {messages.map((msg, idx) => (
+                <li
+                  key={idx}
+                  style={{
+                    background: "#f0f0f0",
+                    marginBottom: "0.5rem",
+                    padding: "0.5rem",
+                    borderRadius: "5px",
+                  }}
+                >
+                  {msg}
+                </li>
+              ))}
+            </ul>
+          </div>
+        }
+      />
+
+      {/* Hangman Page */}
+      <Route path="/hangman" element={<Hangman />} />
+    </Routes>
+  </>
+);
 }
 
 export default App;
