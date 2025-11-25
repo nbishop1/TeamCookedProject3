@@ -57,23 +57,63 @@ io.use((socket, next) => {
     sessionMiddleware(socket.request, {}, next);
 });
 
-io.on('connection', (socket) => {
-    console.log('A user connected:', socket.id);
+let players = {}; // socket.id → name
+let totalNamedPlayers = 0;
 
-    // Example: listen for a "chat" message from client
-    socket.on('chatMessage', (msg) => {
-        console.log('Message from client:', msg);
+io.on("connection", (socket) => {
+    console.log("User connected:", socket.id);
 
-        // You can access session data
-        const session = socket.request.session;
-        console.log('Session ID:', session.id);
+    // Step 1 — ask for name
+    socket.emit("requestName", "Please enter your name.");
 
-        // Broadcast message to all clients
-        io.emit('chatMessage', msg);
+    // Step 2 — user submits name
+    socket.on("submitName", (playerName) => {
+        if (!playerName) return;
+
+        players[socket.id] = playerName;
+        totalNamedPlayers++;
+
+        console.log("Player joined:", playerName);
+
+        // Notify user they must wait
+        if (totalNamedPlayers < 2) {
+            socket.emit("waiting", "Waiting for the other user to enter their name...");
+        }
+
+        // When both users have names — start chat
+        if (totalNamedPlayers === 2) {
+            const names = Object.values(players);
+
+            io.emit("startChat", {
+                message: `Chat ready! ${names[0]} and ${names[1]} are connected.`,
+                players: names
+            });
+        }
     });
 
-    socket.on('disconnect', () => {
-        console.log('User disconnected:', socket.id);
+    // Step 3 — handle messages
+    socket.on("chatMessage", (msg) => {
+        if (totalNamedPlayers < 2) {
+            socket.emit("errorMessage", "You must wait for both users to enter names.");
+            return;
+        }
+
+        io.emit("chatMessage", {
+            sender: players[socket.id],
+            text: msg,
+        });
+    });
+
+    socket.on("disconnect", () => {
+        console.log("User disconnected:", socket.id);
+
+        if (players[socket.id]) {
+            delete players[socket.id];
+            totalNamedPlayers--;
+
+            // Reset everything when someone leaves
+            io.emit("reset", "A user disconnected. Reload to restart.");
+        }
     });
 });
 
