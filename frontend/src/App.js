@@ -9,14 +9,46 @@ const socket = io("http://localhost:3001", {
 function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+  const [name, setName] = useState("");
+  const [hasName, setHasName] = useState(false);
+  const [status, setStatus] = useState("Connecting...");
+  const [canChat, setCanChat] = useState(false);
 
   // Listen for incoming messages from server
   useEffect(() => {
+    socket.on("requestName", (msg) => {
+      setStatus(msg);
+    });
+
+    socket.on("waiting", (msg) => {
+      setStatus(msg);
+    });
+
+    socket.on("startChat", (data) => {
+      setStatus(data.message);
+      setCanChat(true);
+      setHasName(true);
+    });
+
+    socket.on("reset", (msg) => {
+      alert(msg);
+      window.location.reload();
+    });
+
+    socket.on("errorMessage", (msg) => {
+      alert(msg);
+    });
+
     socket.on("chatMessage", (msg) => {
-      setMessages((prev) => [...prev, msg]);
+      setMessages((prev) => [...prev, `${msg.sender}: ${msg.text}`]);
     });
 
     return () => {
+      socket.off("requestName");
+      socket.off("waiting");
+      socket.off("startChat");
+      socket.off("reset");
+      socket.off("errorMessage");
       socket.off("chatMessage");
     };
   }, []);
@@ -27,6 +59,32 @@ function App() {
     socket.emit("chatMessage", input);
     setInput(""); // clear input
   };
+
+  if (!hasName) {
+    return (
+      <div style={{ padding: "2rem" }}>
+        <h1>Enter Name</h1>
+        <p>{status}</p>
+
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Your name..."
+          style={{ padding: "0.5rem", width: "300px" }}
+        />
+
+        <button
+          onClick={() => {
+            socket.emit("submitName", name);
+          }}
+          style={{ padding: "0.5rem 1rem", marginLeft: "0.5rem" }}
+        >
+          Submit
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: "2rem", fontFamily: "Arial" }}>
