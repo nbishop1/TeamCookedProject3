@@ -65,83 +65,130 @@ let players = {
 };
 
 let names = {}; // socket.id → name
+let round = 0;
+let secretWord = null;
+let currentWord = [];
+let wrongAttempts = 0;
+let maxAttempts = 6;
+let win = false;
 
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
 
-  // Tell the frontend to ask for the name
-  socket.emit("requestName", "Please enter your name.");
-
+  // Assign players
   socket.on("submitName", (name) => {
     names[socket.id] = name;
+    console.log("User connected:", name);
 
-    // Assign Player 1 if empty
-    if (!players.player1) {
-      players.player1 = socket.id;
-      console.log("Assigned Player 1:", name);
-    }
-    // Assign Player 2 if empty
-    else if (!players.player2) {
-      players.player2 = socket.id;
-      console.log("Assigned Player 2:", name);
-    }
+    if (!players.player1) players.player1 = socket.id;
+    else if (!players.player2) players.player2 = socket.id;
 
-    // If only Player 1 is set → waiting
-    if (players.player1 && !players.player2) {
-      socket.emit("waiting", "Waiting for Player 2 to join...");
-      return;
-    }
-
-    // When both players are ready → start
     if (players.player1 && players.player2) {
-      io.emit("startChat", {
-        message: "Both players connected! Starting game...",
+      console.log("both users connected");
+      io.emit("startSelectWord", {
         players: {
           p1: names[players.player1],
           p2: names[players.player2],
         },
       });
+    } else {
+      socket.emit("waiting", "Waiting for the other player...");
     }
   });
 
-  socket.on("submitWord", (word) => {
-    // Only Player 1 can submit the word
-    if (socket.id !== players.player1) {
-      socket.emit("errorMessage", "Only Player 1 can choose the word.");
-      return;
-    }
-
-    secretWord = word.toLowerCase();
-    console.log("Secret word:", secretWord);
-
-    // Send both players to the game screen
-    io.emit("wordChosen", {
-      message: "Word chosen! Starting game...",
-    });
-  });
-
+  // Who is who
   socket.on("whoAmI", () => {
-    if (socket.id === players.player1) {
-      socket.emit("youAre", { player: 1 });
-    } else if (socket.id === players.player2) {
-      socket.emit("youAre", { player: 2 });
+    if (socket.id === players.player1) socket.emit("youAre", { player: 1 });
+    else socket.emit("youAre", { player: 2 });
+  });
+
+  // Player 1 submits word
+  socket.on("submitWord", (word) => {
+    console.log("Word:", word);
+    if (socket.id !== players.player1) return;
+    secretWord = word.toLowerCase();
+    currentWord = Array(secretWord.length).fill("_");
+    console.log("Secret word submit:", secretWord);
+    io.emit("startGame", { wordLength: secretWord.length });
+  });
+
+  // Player 2 guesses a letter
+  socket.on("guessLetter", (letter) => {
+    console.log(
+      "Letter guessed:",
+      letter,
+      "Player2?",
+      socket.id === players.player2
+    );
+    console.log("Secret word:", secretWord);
+    if (socket.id !== players.player2) return;
+
+    letter = letter.toLowerCase();
+    let correct = false;
+
+    for (let i = 0; i < secretWord.length; i++) {
+      if (secretWord[i] === letter) {
+        currentWord[i] = letter; // update server state
+        correct = true;
+      }
+    }
+
+    console.log(currentWord);
+    if (!correct) {
+      wrongAttempts++;
+    }
+
+    // Emit to both players
+    io.to(players.player1).emit("letterResult", {
+      letter,
+      correct,
+      currentWord,
+    });
+    io.to(players.player2).emit("letterResult", {
+      letter,
+      correct,
+      currentWord,
+    });
+
+    // Check if game ended
+    const gameWon = !currentWord.includes("_");
+    const gameLost = wrongAttempts >= maxAttempts;
+
+    if (gameWon || gameLost) {
+      console.log("Game Ended");
+      round++;
+
+      if (round >= 2) {
+        console.log("Rounds Ended");
+        io.emit("showHighScores");
+        // reset for next session
+        secretWord = null;
+        currentWord = [];
+        wrongAttempts = 0;
+        round = 0;
+        return;
+      }
+
+      io.emit("endgame", { gameWon }); // emit to both players
+
+      // Rotate players
+      [players.player1, players.player2] = [players.player2, players.player1];
+      secretWord = null;
+      currentWord = [];
+      wrongAttempts = 0;
+
+      
     }
   });
 
-  socket.on("chatMessage", (text) => {
-    io.emit("chatMessage", {
-      sender: names[socket.id],
-      text,
-    });
-  });
-
+  // Disconnect logic
   socket.on("disconnect", () => {
-    console.log("Client disconnected:", socket.id);
-
-    // Reset everything if a player leaves
     if (players.player1 === socket.id || players.player2 === socket.id) {
       players = { player1: null, player2: null };
       names = {};
+      secretWord = null;
+      round = 0;
+      console.log("User Disconnected:");
       io.emit("reset", "A player disconnected. Restarting game...");
     }
   });
